@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 const auth = (req, res, next) => {
     try {
@@ -18,7 +19,7 @@ const auth = (req, res, next) => {
             });
         }
 
-        const decoded = jwt.verify(token, "my-secret-key");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
         req.user = decoded;
 
