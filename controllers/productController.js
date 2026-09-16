@@ -4,7 +4,10 @@ const { productSchema } = require("../validators/productValidator");
 // GET all products
 const getProducts = async (req, res) => {
     try {
-        const products = await Product.find();
+     const products = await Product.find().populate(
+    "createdBy",
+    "username email role"
+);
 
         res.status(200).json(products);
     } catch (error) {
@@ -78,11 +81,7 @@ const updateProduct = async (req, res) => {
             });
         }
 
-        const product = await Product.findByIdAndUpdate(
-            req.params.id,
-            result.data,
-            { new: true }
-        );
+        const product = await Product.findById(req.params.id);
 
         if (!product) {
             return res.status(404).json({
@@ -90,9 +89,20 @@ const updateProduct = async (req, res) => {
             });
         }
 
+        if (product.createdBy.toString() !== req.user.id) {
+            return res.status(403).json({
+                message: "You are not allowed to update this product"
+            });
+        }
+
+        product.name = result.data.name;
+        product.price = result.data.price;
+
+        const updatedProduct = await product.save();
+
         res.status(200).json({
             message: "Product updated successfully",
-            product
+            product: updatedProduct
         });
     } catch (error) {
         res.status(500).json({
@@ -105,13 +115,27 @@ const updateProduct = async (req, res) => {
 // DELETE product
 const deleteProduct = async (req, res) => {
     try {
-        const product = await Product.findByIdAndDelete(req.params.id);
+        const product = await Product.findById(req.params.id);
 
         if (!product) {
             return res.status(404).json({
                 message: "Product not found"
             });
         }
+
+        if (!product.createdBy) {
+            return res.status(403).json({
+                message: "This product has no owner"
+            });
+        }
+
+        if (product.createdBy.toString() !== req.user.id) {
+            return res.status(403).json({
+                message: "You are not allowed to delete this product"
+            });
+        }
+
+        await Product.findByIdAndDelete(req.params.id);
 
         res.status(200).json({
             message: "Product deleted successfully",
